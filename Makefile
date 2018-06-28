@@ -10,6 +10,7 @@ export PORT=80
 export APP=histovec
 export COMPOSE_PROJECT_NAME=${APP}
 export APP_PATH := $(shell pwd)
+export APP_VERSION	:= $(shell git describe --tags)
 export BACKEND=${APP_PATH}/backend
 export FRONTEND=${APP_PATH}/frontend
 export LOGS=${APP_PATH}/log
@@ -43,10 +44,6 @@ vm_max_count		:= $(shell cat /etc/sysctl.conf | egrep vm.max_map_count\s*=\s*262
 
 dummy               := $(shell touch artifacts)
 include ./artifacts
-
-commit              := $(shell git rev-parse HEAD | cut -c1-8)
-lastcommit          := $(shell touch .lastcommit && cat .lastcommit)
-
 
 DC := 'docker-compose'
 
@@ -184,7 +181,7 @@ backend-log:
 	${DC} -f ${DC_PREFIX}-backend.yml logs --build -d 2>&1 | grep -v orphan
 
 frontend-dev: network tor
-	@echo docker-compose up frontend for dev
+	@echo docker-compose up frontend for dev ${VERSION}
 	${DC} -f ${DC_PREFIX}-dev-frontend.yml up --build -d --force-recreate 2>&1 | grep -v orphan
 
 frontend-dev-stop:
@@ -200,15 +197,12 @@ dev-stop: backend-stop elasticsearch-stop frontend-dev-stop network-stop
 
 
 frontend-build: network
-ifneq "$(commit)" "$(lastcommit)"
-	@echo building ${APP} frontend after new commit
+	@echo building ${APP} frontend
 	@echo building frontend in ${FRONTEND}
 	@sudo mkdir -p ${FRONTEND}/dist-build
 	${DC} -f ${DC_PREFIX}-build-frontend.yml up --build 2>&1 | grep -v orphan
 	mkdir -p ${FRONTEND}/dist/
-	@sudo rsync -avz --delete ${FRONTEND}/dist-build/. ${FRONTEND}/dist/. 
-	@echo "${commit-frontend}" > ${FRONTEND}/.lastcommit
-endif
+	@sudo rsync -avz --delete ${FRONTEND}/dist-build/. ${FRONTEND}/dist/.
 
 build: frontend-build
 
